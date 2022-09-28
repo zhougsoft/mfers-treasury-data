@@ -16,6 +16,9 @@ const main = async () => {
 
   console.log('signers: ', await contract.getOwners())
 
+  // treasury contract etherscan:
+  // https://etherscan.io/address/0x21130e908bba2d41b63fbca7caa131285b8724f8#readProxyContract
+
   // notable events:
   // ExecutionSuccess
   // SignMsg
