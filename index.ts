@@ -5,7 +5,7 @@
 
 import * as path from 'path'
 import * as fs from 'fs'
-import { ethers } from 'ethers'
+import { ethers, BigNumber } from 'ethers'
 import * as dotenv from 'dotenv'
 import * as abi from './abi.json'
 
@@ -27,7 +27,7 @@ interface Event {
   logIndex: number
   event: string // event identifier; ex: 'SafeReceived'
   eventSignature: string
-  args: string[]
+  args: string[] | BigNumber[]
 }
 
 const initialize = (): { provider: any; contract: any } => {
@@ -53,26 +53,22 @@ const fetchTreasuryData = async (
   return { treasuryBal, signers }
 }
 
-const cacheTreasuryEvents = async (
+const cacheIncomeEvents = async (
   provider: any,
   contract: any
 ): Promise<void> => {
-  console.log('fetching events...\n\n')
   const currentBlock = await provider.getBlockNumber()
   const events = await contract.queryFilter(
-    '*',
+    'SafeReceived',
     TREASURY_CREATION_BLOCK,
     currentBlock
   )
-  console.log('fetched ' + events.length + ' events!')
 
-  console.log('saving to disk...')
   const cachePath = path.join(__dirname, 'cache')
   if (!fs.existsSync(cachePath)) {
     fs.mkdirSync(cachePath)
   }
   fs.writeFileSync(path.join(cachePath, 'events.json'), JSON.stringify(events))
-  console.log('events cached!\n\n')
 }
 
 const readEventCache = async (): Promise<Event[]> => {
@@ -84,30 +80,37 @@ const readEventCache = async (): Promise<Event[]> => {
 // -- entry point --
 const main = async () => {
   const { provider, contract } = initialize()
+  const { treasuryBal, signers } = await fetchTreasuryData(provider, contract)
 
-  // const { treasuryBal, signers } = await fetchTreasuryData(provider, contract)
+  console.log("\n~*~ unofficial mfers treasury O-' ~*~\n")
+  console.log({ treasuryBal, signers })
 
-  // console.log('caching events...')
-  // await cacheTreasuryEvents(provider, contract)
-
-  const events: Event[] = await readEventCache()
-  const incomeTxs = events.filter(event => event.event === 'SafeReceived')
-
-  const firstTxBlock = await provider.getBlock(incomeTxs[0].blockNumber)
-  const latestTxBlock = await provider.getBlock(incomeTxs.pop().blockNumber)
-
-  const firstTxDate = new Date(firstTxBlock.timestamp * 1000)
-  const latestTxDate = new Date(latestTxBlock.timestamp * 1000)
-
-  console.log({ firstTxDate, latestTxDate })
-
-  // TODO: parse notable events
+  // notable events:
 
   // ExecutionSuccess
   // SignMsg
   // SafeReceived
   // AddedOwner
   // SafeSetup
-}
+
+  console.log('caching events...')
+  await cacheIncomeEvents(provider, contract)
+
+  const incomeEvents: Event[] = await readEventCache()
+
+  // TODO: loop through each income event and fetch block date
+  // this will require a shit load of calls to the chain
+  // it will be too much for infura, must run own node for this!
+
+  // example of parsing an event to get the relevant data
+  const firstTx = incomeEvents[0]
+  const firstTxBlock = await provider.getBlock(firstTx.blockNumber)
+  const tx = {
+    amount: ethers.utils.formatEther(firstTx.args[1]),
+    from: firstTx.args[0],
+    date: new Date(firstTxBlock.timestamp * 1000).toLocaleDateString('en-US'),
+  }
+  console.log('parsed income event:', tx)
+} // end main
 
 main()
