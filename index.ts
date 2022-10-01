@@ -15,6 +15,21 @@ const { NODE_URL } = process.env
 const TREASURY_ADDR = 'unofficialmfers.eth'
 const TREASURY_CREATION_BLOCK = 14111591
 
+interface Event {
+  blockNumber: number
+  blockHash: string
+  transactionIndex: number
+  removed: boolean
+  address: string
+  data: string
+  topics: string[]
+  transactionHash: string
+  logIndex: number
+  event: string // event identifier; ex: 'SafeReceived'
+  eventSignature: string
+  args: string[]
+}
+
 const initialize = (): { provider: any; contract: any } => {
   if (!NODE_URL || NODE_URL.length === 0)
     throw Error('NODE_URL not set in .env file')
@@ -27,7 +42,21 @@ const initialize = (): { provider: any; contract: any } => {
   return { provider, contract }
 }
 
-const cacheEvents = async (provider: any, contract: any): Promise<void> => {
+const fetchTreasuryData = async (
+  provider: any,
+  contract: any
+): Promise<{ treasuryBal: string; signers: string[] }> => {
+  const treasuryBal = ethers.utils.formatEther(
+    await provider.getBalance(TREASURY_ADDR)
+  )
+  const signers = await contract.getOwners()
+  return { treasuryBal, signers }
+}
+
+const cacheTreasuryEvents = async (
+  provider: any,
+  contract: any
+): Promise<void> => {
   console.log('fetching events...\n\n')
   const currentBlock = await provider.getBlockNumber()
   const events = await contract.queryFilter(
@@ -46,7 +75,7 @@ const cacheEvents = async (provider: any, contract: any): Promise<void> => {
   console.log('events cached!\n\n')
 }
 
-const readEventCache = async (): Promise<Array<any>> => {
+const readEventCache = async (): Promise<Event[]> => {
   const cachePath = path.join(__dirname, 'cache', 'events.json')
   const fileData = fs.readFileSync(cachePath, { encoding: 'utf-8' })
   return JSON.parse(fileData)
@@ -56,17 +85,21 @@ const readEventCache = async (): Promise<Array<any>> => {
 const main = async () => {
   const { provider, contract } = initialize()
 
-  console.log('fetching treasury data...\n\n')
-  console.log(
-    'treasury balance: ',
-    ethers.utils.formatEther(await provider.getBalance(TREASURY_ADDR))
-  )
-  console.log('signer addresses: ', await contract.getOwners(), '\n\n')
+  // const { treasuryBal, signers } = await fetchTreasuryData(provider, contract)
 
-  console.log('caching events...')
-  await cacheEvents(provider, contract)
-  const eventData = await readEventCache()
-  console.log('events:', eventData)
+  // console.log('caching events...')
+  // await cacheTreasuryEvents(provider, contract)
+
+  const events: Event[] = await readEventCache()
+  const incomeTxs = events.filter(event => event.event === 'SafeReceived')
+
+  const firstTxBlock = await provider.getBlock(incomeTxs[0].blockNumber)
+  const latestTxBlock = await provider.getBlock(incomeTxs.pop().blockNumber)
+
+  const firstTxDate = new Date(firstTxBlock.timestamp * 1000)
+  const latestTxDate = new Date(latestTxBlock.timestamp * 1000)
+
+  console.log({ firstTxDate, latestTxDate })
 
   // TODO: parse notable events
 
