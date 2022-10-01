@@ -3,10 +3,12 @@
 // treasury contract etherscan:
 // https://etherscan.io/address/0x21130e908bba2d41b63fbca7caa131285b8724f8#readProxyContract
 
+import 'isomorphic-unfetch'
 import * as path from 'path'
 import * as fs from 'fs'
-import { ethers, BigNumber } from 'ethers'
 import * as dotenv from 'dotenv'
+import { createClient } from '@urql/core'
+import { ethers, BigNumber } from 'ethers'
 import * as abi from './abi.json'
 
 dotenv.config()
@@ -14,6 +16,9 @@ dotenv.config()
 const { NODE_URL } = process.env
 const TREASURY_ADDR = 'unofficialmfers.eth'
 const TREASURY_CREATION_BLOCK = 14111591
+const BLOCK_SUBGRAPH_ID = 'QmNtTKStPBm3bnghvyKLNY5B8etER8CG9ei9m7APT1kdx6'
+const BLOCK_SUBGRAPH_ENDPOINT =
+  'https://api.thegraph.com/subgraphs/name/blocklytics/ethereum-blocks'
 
 interface Event {
   blockNumber: number
@@ -30,16 +35,15 @@ interface Event {
   args: string[] | BigNumber[]
 }
 
-const initialize = (): { provider: any; contract: any } => {
+const initialize = (): { provider: any; contract: any; gqlClient: any } => {
   if (!NODE_URL || NODE_URL.length === 0)
     throw Error('NODE_URL not set in .env file')
-  if (!TREASURY_ADDR || TREASURY_ADDR.length === 0)
-    throw Error('TREASURY_ADDR not set in .env file')
 
   const provider = new ethers.providers.JsonRpcProvider(NODE_URL)
   const contract = new ethers.Contract(TREASURY_ADDR, abi, provider)
+  const gqlClient = createClient({ url: BLOCK_SUBGRAPH_ENDPOINT })
 
-  return { provider, contract }
+  return { provider, contract, gqlClient }
 }
 
 const fetchTreasuryData = async (
@@ -71,46 +75,47 @@ const cacheIncomeEvents = async (
   fs.writeFileSync(path.join(cachePath, 'events.json'), JSON.stringify(events))
 }
 
-const readEventCache = async (): Promise<Event[]> => {
+const readIncomeEventCache = async (): Promise<Event[]> => {
   const cachePath = path.join(__dirname, 'cache', 'events.json')
   const fileData = fs.readFileSync(cachePath, { encoding: 'utf-8' })
   return JSON.parse(fileData)
 }
 
+const parseIncomeEvent = (event: Event): any => {
+  return {
+    amount: ethers.utils.formatEther(event.args[1]),
+    from: event.args[0],
+  }
+}
+
 // -- entry point --
 const main = async () => {
-  const { provider, contract } = initialize()
-  const { treasuryBal, signers } = await fetchTreasuryData(provider, contract)
+  const { provider, contract, gqlClient } = initialize()
 
-  console.log("\n~*~ unofficial mfers treasury O-' ~*~\n")
-  console.log({ treasuryBal, signers })
+  // const { treasuryBal, signers } = await fetchTreasuryData(provider, contract)
+  // console.log("\n~*~ unofficial mfers treasury O-' ~*~\n")
+  // console.log({ treasuryBal, signers })
+  // console.log('caching events...')
+  // await cacheIncomeEvents(provider, contract)
+  // const incomeEvents: Event[] = await readIncomeEventCache()
+  // const firstIncomeTx = parseIncomeEvent(incomeEvents[0])
 
-  // notable events:
+  // TODO: loop through and fetch timestamp for each block number in the parser function
 
-  // ExecutionSuccess
-  // SignMsg
-  // SafeReceived
-  // AddedOwner
-  // SafeSetup
+  // use this subgraph to fetch the timestamp instead of calling chain?
+  // https://thegraph.com/hosted-service/subgraph/blocklytics/ethereum-blocks
+  // https://blocklytics.org/blog/ethereum-blocks-subgraph-made-for-time-travel
 
-  console.log('caching events...')
-  await cacheIncomeEvents(provider, contract)
+  const query = `{
+    blocks(where: { number: 1 }) {
+      number
+      timestamp
+    }
+  }`
 
-  const incomeEvents: Event[] = await readEventCache()
-
-  // TODO: loop through each income event and fetch block date
-  // this will require a shit load of calls to the chain
-  // it will be too much for infura, must run own node for this!
-
-  // example of parsing an event to get the relevant data
-  const firstTx = incomeEvents[0]
-  const firstTxBlock = await provider.getBlock(firstTx.blockNumber)
-  const tx = {
-    amount: ethers.utils.formatEther(firstTx.args[1]),
-    from: firstTx.args[0],
-    date: new Date(firstTxBlock.timestamp * 1000).toLocaleDateString('en-US'),
-  }
-  console.log('parsed income event:', tx)
+  console.log('fetching subgraph data...')
+  const result = await gqlClient.query(query).toPromise()
+  console.log(result.data.blocks)
 } // end main
 
 main()
