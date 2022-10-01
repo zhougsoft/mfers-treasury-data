@@ -106,16 +106,25 @@ const main = async () => {
   // https://thegraph.com/hosted-service/subgraph/blocklytics/ethereum-blocks
   // https://blocklytics.org/blog/ethereum-blocks-subgraph-made-for-time-travel
 
-  const query = `{
-    blocks(where: { number: 1 }) {
-      number
-      timestamp
-    }
-  }`
+  const timestamps = []
+  let count = 1
+  while (count < 11) {
+    const query = `{
+      blocks(where: { number: ${count} }) {
+        number
+        timestamp
+      }
+    }`
 
-  console.log('fetching subgraph data...')
-  const result = await gqlClient.query(query).toPromise()
-  console.log(result.data.blocks)
+    console.log(`fetching ${count}...`)
+    const result = await gqlClient.query(query).toPromise()
+
+    timestamps.push(result.data.blocks[0].timestamp)
+    count++
+  }
+
+  console.log(timestamps.length, ' timestamps fetched!\n')
+  console.log(timestamps)
 } // end main
 
 main()
