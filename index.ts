@@ -1,8 +1,3 @@
-// mfers treasury data & event parsing
-
-// treasury contract etherscan:
-// https://etherscan.io/address/0x21130e908bba2d41b63fbca7caa131285b8724f8#readProxyContract
-
 import 'isomorphic-unfetch'
 import * as path from 'path'
 import * as fs from 'fs'
@@ -16,7 +11,6 @@ dotenv.config()
 const { NODE_URL } = process.env
 const TREASURY_ADDR = 'unofficialmfers.eth'
 const TREASURY_CREATION_BLOCK = 14111591
-const BLOCK_SUBGRAPH_ID = 'QmNtTKStPBm3bnghvyKLNY5B8etER8CG9ei9m7APT1kdx6'
 const BLOCK_SUBGRAPH_ENDPOINT =
   'https://api.thegraph.com/subgraphs/name/blocklytics/ethereum-blocks'
 
@@ -37,14 +31,18 @@ interface Event {
 
 // sets up library clients
 const initialize = (): { provider: any; contract: any; gqlClient: any } => {
-  if (!NODE_URL || NODE_URL.length === 0)
-    throw Error('NODE_URL not set in .env file')
+  try {
+    if (!NODE_URL || NODE_URL.length === 0)
+      throw Error('NODE_URL not set in .env file')
 
-  const provider = new ethers.providers.JsonRpcProvider(NODE_URL)
-  const contract = new ethers.Contract(TREASURY_ADDR, abi, provider)
-  const gqlClient = createClient({ url: BLOCK_SUBGRAPH_ENDPOINT })
+    const provider = new ethers.providers.JsonRpcProvider(NODE_URL)
+    const contract = new ethers.Contract(TREASURY_ADDR, abi, provider)
+    const gqlClient = createClient({ url: BLOCK_SUBGRAPH_ENDPOINT })
 
-  return { provider, contract, gqlClient }
+    return { provider, contract, gqlClient }
+  } catch (error) {
+    console.error(error)
+  }
 }
 
 // returns current treasury ETH balance and signers
@@ -52,11 +50,15 @@ const fetchTreasuryData = async (
   provider: any,
   contract: any
 ): Promise<{ treasuryBal: string; signers: string[] }> => {
-  const treasuryBal = ethers.utils.formatEther(
-    await provider.getBalance(TREASURY_ADDR)
-  )
-  const signers = await contract.getOwners()
-  return { treasuryBal, signers }
+  try {
+    const treasuryBal = ethers.utils.formatEther(
+      await provider.getBalance(TREASURY_ADDR)
+    )
+    const signers = await contract.getOwners()
+    return { treasuryBal, signers }
+  } catch (error) {
+    console.error(error)
+  }
 }
 
 // fetches all treasury `SafeRecieved` events and writes them to disk as JSON
@@ -64,63 +66,102 @@ const cacheIncomeEvents = async (
   provider: any,
   contract: any
 ): Promise<void> => {
-  const currentBlock = await provider.getBlockNumber()
-  const events = await contract.queryFilter(
-    'SafeReceived',
-    TREASURY_CREATION_BLOCK,
-    currentBlock
-  )
+  try {
+    const currentBlock = await provider.getBlockNumber()
+    const events = await contract.queryFilter(
+      'SafeReceived',
+      TREASURY_CREATION_BLOCK,
+      currentBlock
+    )
 
-  const cachePath = path.join(__dirname, 'cache')
-  if (!fs.existsSync(cachePath)) {
-    fs.mkdirSync(cachePath)
+    const cachePath = path.join(__dirname, 'cache')
+    if (!fs.existsSync(cachePath)) {
+      fs.mkdirSync(cachePath)
+    }
+    fs.writeFileSync(
+      path.join(cachePath, 'events.json'),
+      JSON.stringify(events)
+    )
+  } catch (error) {
+    console.error(error)
   }
-  fs.writeFileSync(path.join(cachePath, 'events.json'), JSON.stringify(events))
 }
 
 // returns object parsed from cache JSON file
 const readIncomeEventCache = async (): Promise<Event[]> => {
-  const cachePath = path.join(__dirname, 'cache', 'events.json')
-  const fileData = fs.readFileSync(cachePath, { encoding: 'utf-8' })
-  return JSON.parse(fileData)
+  try {
+    const cachePath = path.join(__dirname, 'cache', 'events.json')
+    const fileData = fs.readFileSync(cachePath, { encoding: 'utf-8' })
+    return JSON.parse(fileData)
+  } catch (error) {
+    console.error(error)
+  }
+}
+
+// returns UNIX timestamp of a passed block number, fetched from subgraph
+const fetchBlockTimestamp = async (
+  blockNumber: number,
+  gqlClient: any
+): Promise<number> => {
+  try {
+    const query = `{ blocks(where: { number: ${blockNumber} }) { timestamp } }`
+    const result = await gqlClient.query(query).toPromise().catch(console.error)
+    return result?.data?.blocks[0]?.timestamp
+  } catch (error) {
+    console.error(error)
+  }
+}
+
+// writes passed data to the `output/output.json` file
+const writeOutputJSON = async (data: any) => {
+  try {
+    const outputPath = path.join(__dirname, 'output')
+    if (!fs.existsSync(outputPath)) {
+      fs.mkdirSync(outputPath)
+    }
+    fs.writeFileSync(path.join(outputPath, 'output.json'), JSON.stringify(data))
+  } catch (error) {
+    console.error(error)
+  }
 }
 
 // -- entry point --
 const main = async () => {
   const { provider, contract, gqlClient } = initialize()
 
-  // const { treasuryBal, signers } = await fetchTreasuryData(provider, contract)
-  // console.log("\n~*~ unofficial mfers treasury O-' ~*~\n")
-  // console.log({ treasuryBal, signers })
-  // console.log('caching events...')
+  // display some treasury info
+  const { treasuryBal, signers } = await fetchTreasuryData(provider, contract)
+  console.log("\n~*~ unofficial mfers treasury O-' ~*~\n")
+  console.log({ treasuryBal, signers })
 
-  // if (!fs.existsSync(path.join(__dirname, 'cache'))) {
-  //   await cacheIncomeEvents(provider, contract)
-  // }
+  // if no event cache exists, fetch & cache events
+  if (!fs.existsSync(path.join(__dirname, 'cache'))) {
+    console.log('caching events...')
+    await cacheIncomeEvents(provider, contract)
+  }
 
-  const incomeTxs = []
+  // read events from the event cache
   const incomeEvents: Event[] = await readIncomeEventCache()
+  console.log(`\nparsing ${incomeEvents.length} events...`)
 
-  // TODO: this isnt working
+  // fetch timestamp for each event by block number via subgraph
+  const incomeTxPromises = incomeEvents.map(async ev => {
+    const timestamp = await fetchBlockTimestamp(ev.blockNumber, gqlClient)
 
-  incomeEvents.forEach(async (ev: Event, i) => {
-    console.log(`${((i / incomeEvents.length) * 100).toFixed(2)}% complete`)
-
-    const { blockNumber } = ev
-
-    const query = `{ blocks(where: { number: ${blockNumber} }) { timestamp } }`
-    const result = await gqlClient.query(query).toPromise()
-
-    incomeTxs.push({
+    const incomeTx = {
       amount: ethers.utils.formatEther(ev.args[1]),
       from: ev?.args[0],
-      timestamp: result?.data?.blocks[0]?.timestamp,
-      blockNumber,
-    })
+      timestamp,
+      blockNumber: ev.blockNumber,
+    }
+
+    return incomeTx
   })
 
-  fs.writeFileSync('output.json', JSON.stringify(incomeTxs))
-  console.log('done')
+  // wait for graph queries to resolve then write resulting data to disk as JSON
+  const incomeTxs = await Promise.all(incomeTxPromises)
+  await writeOutputJSON(incomeTxs)
+  console.log(`done! wrote ${incomeTxs.length} txs to output\n`)
 } // end main
 
 main()
