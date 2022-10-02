@@ -35,6 +35,7 @@ interface Event {
   args: string[] | BigNumber[]
 }
 
+// sets up library clients
 const initialize = (): { provider: any; contract: any; gqlClient: any } => {
   if (!NODE_URL || NODE_URL.length === 0)
     throw Error('NODE_URL not set in .env file')
@@ -46,6 +47,7 @@ const initialize = (): { provider: any; contract: any; gqlClient: any } => {
   return { provider, contract, gqlClient }
 }
 
+// returns current treasury ETH balance and signers
 const fetchTreasuryData = async (
   provider: any,
   contract: any
@@ -57,6 +59,7 @@ const fetchTreasuryData = async (
   return { treasuryBal, signers }
 }
 
+// fetches all treasury `SafeRecieved` events and writes them to disk as JSON
 const cacheIncomeEvents = async (
   provider: any,
   contract: any
@@ -75,17 +78,11 @@ const cacheIncomeEvents = async (
   fs.writeFileSync(path.join(cachePath, 'events.json'), JSON.stringify(events))
 }
 
+// returns object parsed from cache JSON file
 const readIncomeEventCache = async (): Promise<Event[]> => {
   const cachePath = path.join(__dirname, 'cache', 'events.json')
   const fileData = fs.readFileSync(cachePath, { encoding: 'utf-8' })
   return JSON.parse(fileData)
-}
-
-const parseIncomeEvent = (event: Event): any => {
-  return {
-    amount: ethers.utils.formatEther(event.args[1]),
-    from: event.args[0],
-  }
 }
 
 // -- entry point --
@@ -96,35 +93,34 @@ const main = async () => {
   // console.log("\n~*~ unofficial mfers treasury O-' ~*~\n")
   // console.log({ treasuryBal, signers })
   // console.log('caching events...')
-  // await cacheIncomeEvents(provider, contract)
-  // const incomeEvents: Event[] = await readIncomeEventCache()
-  // const firstIncomeTx = parseIncomeEvent(incomeEvents[0])
 
-  // TODO: loop through and fetch timestamp for each block number in the parser function
+  // if (!fs.existsSync(path.join(__dirname, 'cache'))) {
+  //   await cacheIncomeEvents(provider, contract)
+  // }
 
-  // use this subgraph to fetch the timestamp instead of calling chain?
-  // https://thegraph.com/hosted-service/subgraph/blocklytics/ethereum-blocks
-  // https://blocklytics.org/blog/ethereum-blocks-subgraph-made-for-time-travel
+  const incomeTxs = []
+  const incomeEvents: Event[] = await readIncomeEventCache()
 
-  const timestamps = []
-  let count = 1
-  while (count < 11) {
-    const query = `{
-      blocks(where: { number: ${count} }) {
-        number
-        timestamp
-      }
-    }`
+  // TODO: this isnt working
 
-    console.log(`fetching ${count}...`)
+  incomeEvents.forEach(async (ev: Event, i) => {
+    console.log(`${((i / incomeEvents.length) * 100).toFixed(2)}% complete`)
+
+    const { blockNumber } = ev
+
+    const query = `{ blocks(where: { number: ${blockNumber} }) { timestamp } }`
     const result = await gqlClient.query(query).toPromise()
 
-    timestamps.push(result.data.blocks[0].timestamp)
-    count++
-  }
+    incomeTxs.push({
+      amount: ethers.utils.formatEther(ev.args[1]),
+      from: ev?.args[0],
+      timestamp: result?.data?.blocks[0]?.timestamp,
+      blockNumber,
+    })
+  })
 
-  console.log(timestamps.length, ' timestamps fetched!\n')
-  console.log(timestamps)
+  fs.writeFileSync('output.json', JSON.stringify(incomeTxs))
+  console.log('done')
 } // end main
 
 main()
