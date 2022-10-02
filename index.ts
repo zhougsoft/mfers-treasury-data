@@ -106,20 +106,23 @@ const fetchBlockTimestamp = async (
   try {
     const query = `{ blocks(where: { number: ${blockNumber} }) { timestamp } }`
     const result = await gqlClient.query(query).toPromise().catch(console.error)
-    return result?.data?.blocks[0]?.timestamp
+    return parseInt(result?.data?.blocks[0]?.timestamp)
   } catch (error) {
     console.error(error)
   }
 }
 
 // writes passed data to the `output/output.json` file
-const writeOutputJSON = async (data: any) => {
+const writeOutputJSON = async (data: any, filename: string) => {
   try {
     const outputPath = path.join(__dirname, 'output')
     if (!fs.existsSync(outputPath)) {
       fs.mkdirSync(outputPath)
     }
-    fs.writeFileSync(path.join(outputPath, 'output.json'), JSON.stringify(data))
+    fs.writeFileSync(
+      path.join(outputPath, `${filename}.json`),
+      JSON.stringify(data)
+    )
   } catch (error) {
     console.error(error)
   }
@@ -129,11 +132,6 @@ const writeOutputJSON = async (data: any) => {
 const main = async () => {
   const { provider, contract, gqlClient } = initialize()
 
-  // display some treasury info
-  const { treasuryBal, signers } = await fetchTreasuryData(provider, contract)
-  console.log("\n~*~ unofficial mfers treasury O-' ~*~\n")
-  console.log({ treasuryBal, signers })
-
   // if no event cache exists, fetch & cache events
   if (!fs.existsSync(path.join(__dirname, 'cache'))) {
     console.log('caching events...')
@@ -142,14 +140,14 @@ const main = async () => {
 
   // read events from the event cache
   const incomeEvents: Event[] = await readIncomeEventCache()
-  console.log(`\nparsing ${incomeEvents.length} events...`)
 
   // fetch timestamp for each event by block number via subgraph
+  // ** WARNING: running this in batches of events over 500 will likely fail
   const incomeTxPromises = incomeEvents.map(async ev => {
     const timestamp = await fetchBlockTimestamp(ev.blockNumber, gqlClient)
 
     const incomeTx = {
-      amount: ethers.utils.formatEther(ev.args[1]),
+      amount: parseFloat(ethers.utils.formatEther(ev.args[1])),
       from: ev?.args[0],
       timestamp,
       blockNumber: ev.blockNumber,
@@ -159,8 +157,9 @@ const main = async () => {
   })
 
   // wait for graph queries to resolve then write resulting data to disk as JSON
+  console.log(`\nfetching timestamps for events...`)
   const incomeTxs = await Promise.all(incomeTxPromises)
-  await writeOutputJSON(incomeTxs)
+  await writeOutputJSON(incomeTxs, 'output')
   console.log(`done! wrote ${incomeTxs.length} txs to output\n`)
 } // end main
 
