@@ -2,11 +2,17 @@
 
 > a script to ping the mfers treasury contract and parse it's related data
 
-some example parsed data is in the `data` folder
+** warning: this is a WIP **
 
-## to run
+## to use
 
-1. install deps: `npm install`
-1. make a copy of `.env.example` named `.env` and add Ethereum node url
-1. run the script with `npm start`
-1. fetched & parsed events land in the auto-created `output` folder!
+- install deps:
+  - `npm install`
+- serve the non-existent client lol:
+  - `npm start`
+- fetch & parse treasury contract income events, then save them to disk as json:
+  - `npm run cache`
+- spin up an in-memory sqlite database and seed with cached data (very WIP):
+  - `npm run migrate-up`
+
+use at own risk lol

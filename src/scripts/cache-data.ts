@@ -4,7 +4,7 @@ import * as fs from 'fs'
 import * as dotenv from 'dotenv'
 import { createClient } from '@urql/core'
 import { ethers, BigNumber } from 'ethers'
-import * as abi from './abi.json'
+import * as abi from '../data/abi.json'
 
 dotenv.config()
 
@@ -74,7 +74,7 @@ const cacheIncomeEvents = async (
       currentBlock
     )
 
-    const cachePath = path.join(__dirname, 'cache')
+    const cachePath = path.join(__dirname, '../../cache')
     if (!fs.existsSync(cachePath)) {
       fs.mkdirSync(cachePath)
     }
@@ -90,7 +90,7 @@ const cacheIncomeEvents = async (
 // returns object parsed from cache JSON file
 const readIncomeEventCache = async (): Promise<Event[]> => {
   try {
-    const cachePath = path.join(__dirname, 'cache', 'events.json')
+    const cachePath = path.join(__dirname, '../../cache', 'events.json')
     const fileData = fs.readFileSync(cachePath, { encoding: 'utf-8' })
     return JSON.parse(fileData)
   } catch (error) {
@@ -115,7 +115,7 @@ const fetchBlockTimestamp = async (
 // writes passed data to the `output/output.json` file
 const writeOutputJSON = async (data: any, filename: string) => {
   try {
-    const outputPath = path.join(__dirname, 'output')
+    const outputPath = path.join(__dirname, '../../output')
     if (!fs.existsSync(outputPath)) {
       fs.mkdirSync(outputPath)
     }
@@ -133,7 +133,7 @@ const main = async () => {
   const { provider, contract, gqlClient } = initialize()
 
   // if no event cache exists, fetch & cache events
-  if (!fs.existsSync(path.join(__dirname, 'cache'))) {
+  if (!fs.existsSync(path.join(__dirname, '../../cache'))) {
     console.log('caching events...')
     await cacheIncomeEvents(provider, contract)
   }
@@ -142,7 +142,6 @@ const main = async () => {
   const incomeEvents: Event[] = await readIncomeEventCache()
 
   // fetch timestamp for each event by block number via subgraph
-  // ** WARNING: running this in batches of events over 500 will likely fail
   const incomeTxPromises = incomeEvents.map(async ev => {
     const timestamp = await fetchBlockTimestamp(ev.blockNumber, gqlClient)
 
@@ -158,7 +157,11 @@ const main = async () => {
 
   // wait for graph queries to resolve then write resulting data to disk as JSON
   console.log(`\nfetching timestamps for events...`)
+
+  // TODO: break these into batches of 250 and fetch in a loop with a timeout instead of all at once!
+  // requests will fail on batches of over 500
   const incomeTxs = await Promise.all(incomeTxPromises)
+
   await writeOutputJSON(incomeTxs, 'output')
   console.log(`done! wrote ${incomeTxs.length} txs to output\n`)
 } // end main

@@ -2999,7 +2999,6 @@
     "timestamp": 1657702185,
     "blockNumber": 15133325
   },
-
   {
     "amount": 0.0425,
     "from": "0x2C47540D6F4589A974E651f13a27dd9a62F30b89",
@@ -6000,7 +5999,6 @@
     "timestamp": 1661217841,
     "blockNumber": 15393686
   },
-
   {
     "amount": 0.02425,
     "from": "0x2C47540D6F4589A974E651f13a27dd9a62F30b89",
@@ -8760,5 +8758,83 @@
     "from": "0x2C47540D6F4589A974E651f13a27dd9a62F30b89",
     "timestamp": 1664658131,
     "blockNumber": 15655851
+  },
+  {
+    "amount": 0.035,
+    "from": "0x2C47540D6F4589A974E651f13a27dd9a62F30b89",
+    "timestamp": 1664691683,
+    "blockNumber": 15658633
+  },
+  {
+    "amount": 0.0465,
+    "from": "0x2C47540D6F4589A974E651f13a27dd9a62F30b89",
+    "timestamp": 1664718815,
+    "blockNumber": 15660886
+  },
+  {
+    "amount": 0.02875,
+    "from": "0x2C47540D6F4589A974E651f13a27dd9a62F30b89",
+    "timestamp": 1664732111,
+    "blockNumber": 15661992
+  },
+  {
+    "amount": 0.033,
+    "from": "0x2C47540D6F4589A974E651f13a27dd9a62F30b89",
+    "timestamp": 1664768363,
+    "blockNumber": 15664998
+  },
+  {
+    "amount": 0.026,
+    "from": "0x2C47540D6F4589A974E651f13a27dd9a62F30b89",
+    "timestamp": 1664785451,
+    "blockNumber": 15666411
+  },
+  {
+    "amount": 0.03625,
+    "from": "0x2C47540D6F4589A974E651f13a27dd9a62F30b89",
+    "timestamp": 1664791571,
+    "blockNumber": 15666918
+  },
+  {
+    "amount": 0.0245,
+    "from": "0x2C47540D6F4589A974E651f13a27dd9a62F30b89",
+    "timestamp": 1664808599,
+    "blockNumber": 15668332
+  },
+  {
+    "amount": 0.025,
+    "from": "0x2C47540D6F4589A974E651f13a27dd9a62F30b89",
+    "timestamp": 1664808743,
+    "blockNumber": 15668344
+  },
+  {
+    "amount": 0.025,
+    "from": "0x2C47540D6F4589A974E651f13a27dd9a62F30b89",
+    "timestamp": 1664808755,
+    "blockNumber": 15668345
+  },
+  {
+    "amount": 0.025,
+    "from": "0x2C47540D6F4589A974E651f13a27dd9a62F30b89",
+    "timestamp": 1664808839,
+    "blockNumber": 15668352
+  },
+  {
+    "amount": 0.0265,
+    "from": "0x2C47540D6F4589A974E651f13a27dd9a62F30b89",
+    "timestamp": 1664809067,
+    "blockNumber": 15668371
+  },
+  {
+    "amount": 0.02625,
+    "from": "0x2C47540D6F4589A974E651f13a27dd9a62F30b89",
+    "timestamp": 1664809199,
+    "blockNumber": 15668381
+  },
+  {
+    "amount": 0.0275,
+    "from": "0x2C47540D6F4589A974E651f13a27dd9a62F30b89",
+    "timestamp": 1664814971,
+    "blockNumber": 15668858
   }
 ]

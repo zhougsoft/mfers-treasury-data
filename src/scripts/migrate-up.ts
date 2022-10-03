@@ -6,7 +6,7 @@
 
 import * as sqlite3 from 'sqlite3'
 import { open } from 'sqlite'
-import * as incomeEvents from './data/income-events.json'
+import * as incomeEvents from '../../output/output.json'
 
 const main = async () => {
   try {
