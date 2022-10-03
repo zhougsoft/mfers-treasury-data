@@ -1,8 +1,12 @@
+// this script instantiates and seeds the sqlite database
+// this prototype could be extended to server as a custom treasury event indexer
+
+// sqlite client usage docs:
+// https://www.npmjs.com/package/sqlite
+
 import * as sqlite3 from 'sqlite3'
 import { open } from 'sqlite'
-
-// using sqlite - a promise-based wrapper for sqlite3 library
-// docs: https://www.npmjs.com/package/sqlite
+import * as incomeEvents from './data/income-events.json'
 
 const main = async () => {
   try {
@@ -12,19 +16,33 @@ const main = async () => {
       driver: sqlite3.Database,
     })
 
+    // create income transactions table
     const q_CreateTable =
-      'CREATE TABLE stash (id INTEGER PRIMARY KEY, val CHAR);'
-
-    const q_SeedTable =
-      "INSERT INTO stash (val) VALUES ('hello'), ('hi'), ('how r u')"
-
+      'CREATE TABLE txs (id INTEGER PRIMARY KEY, amount REAL, from_addr TEXT, timestamp INTEGER, block_number INTEGER)'
     await db.exec(q_CreateTable)
-    await db.exec(q_SeedTable)
-    const rowResult = await db.get('SELECT * FROM stash WHERE id = ?', [1])
-    const allRowsResult = await db.all('SELECT * FROM stash')
 
-    console.log({ rowResult, allRowsResult })
+    // seed table with data from income transactions JSON
+    const q_InsertRow =
+      'INSERT INTO txs (amount, from_addr, timestamp, block_number) VALUES (?, ?, ?, ?)'
+    incomeEvents.forEach(async ev => {
+      const eventVals = Object.keys(ev).map(key => ev[key])
+      await db.run(q_InsertRow, eventVals)
+    })
 
+    // examples of data fetching
+    const firstTransactionRecord = await db.get(
+      'SELECT * FROM txs WHERE id = ?',
+      [1]
+    )
+
+    const allTransactions = await db.all('SELECT * FROM txs')
+
+    console.log({
+      firstTransactionRecord,
+      totalTransactionRecords: allTransactions.length,
+    })
+
+    // don't forget to close the db when yr done lol
     await db.close()
   } catch (error) {
     console.error(error)
