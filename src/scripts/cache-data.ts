@@ -133,6 +133,8 @@ const main = async () => {
   const { provider, contract, gqlClient } = initialize()
 
   // if no event cache exists, fetch & cache events
+  // TODO: implement a simple checksum system to diff the updated state
+  // of the chain vs. the cache and flag if it is out of date and by how many blocks (can be used later to fetch only portions missing)
   if (!fs.existsSync(path.join(__dirname, '../../cache'))) {
     console.log('caching events...')
     await cacheIncomeEvents(provider, contract)
@@ -142,6 +144,7 @@ const main = async () => {
   const incomeEvents: Event[] = await readIncomeEventCache()
 
   // fetch timestamp for each event by block number via subgraph
+  // this gives an array of promises to resolve the final data
   const incomeTxPromises = incomeEvents.map(async ev => {
     const timestamp = await fetchBlockTimestamp(ev.blockNumber, gqlClient)
 
@@ -156,10 +159,9 @@ const main = async () => {
   })
 
   // wait for graph queries to resolve then write resulting data to disk as JSON
-  console.log(`\nfetching timestamps for events...`)
+  console.log(`\nfetching timestamps for ${incomeTxPromises.length} events...`)
 
-  // TODO: break these into batches of 250 and fetch in a loop with a timeout instead of all at once!
-  // requests will fail on batches of over 500
+  // TODO: write promise batcher algo here for `incomeTxPromises` as requests will fail on batches > 500
   const incomeTxs = await Promise.all(incomeTxPromises)
 
   await writeOutputJSON(incomeTxs, 'output')

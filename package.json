@@ -6,7 +6,11 @@
     "cache": "ts-node src/scripts/cache-data.ts",
     "migrate-up": "ts-node src/scripts/migrate-up.ts",
     "migrate-down": "ts-node src/scripts/migrate-down.ts",
-    "clean": "rimraf cache output src/db/database.db"
+    "clean-cache": "rimraf cache",
+    "clean-output": "rimraf output",
+    "clean-db": "rimraf src/db/database.db",
+    "clean-all": "npm run clean-cache && npm run clean-output && npm run clean-db",
+    "bootstrap": "npm run cache && npm run migrate-up && npm start"
   },
   "author": "zhoug.eth",
   "license": "MIT",

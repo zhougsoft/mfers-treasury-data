@@ -7,7 +7,7 @@ const PORT = 5000
 const main = async () => {
   try {
     // connect to the sqlite database
-    const db = await connectDb()
+    // const db = await connectDb()
 
     // setup express server
     const app = express()
@@ -17,6 +17,10 @@ const main = async () => {
     // TODO: setup router here and wire up these queries to routes
     // const firstTx = await db.get('SELECT * FROM txs WHERE id = ?', [1])
     // const allTxs = await db.all('SELECT * FROM txs')
+
+    app.get('/api/txs', (req, res) => {
+      res.json({ msg: 'hi lol' })
+    })
 
     // start express server
     app.listen(PORT, () => {
