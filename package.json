@@ -5,7 +5,8 @@
     "start": "ts-node src/index.ts",
     "cache": "ts-node src/scripts/cache-data.ts",
     "migrate-up": "ts-node src/scripts/migrate-up.ts",
-    "clean": "rimraf cache output"
+    "migrate-down": "ts-node src/scripts/migrate-down.ts",
+    "clean": "rimraf cache output src/db/database.db"
   },
   "author": "zhoug.eth",
   "license": "MIT",
