@@ -7,19 +7,22 @@ const PORT = 5000
 const main = async () => {
   try {
     // connect to the sqlite database
-    // const db = await connectDb()
+    const db = await connectDb()
 
     // setup express server
     const app = express()
     const publicPath = path.join(__dirname, '../public')
     app.use(express.static(publicPath, { extensions: ['html'] }))
 
-    // TODO: setup router here and wire up these queries to routes
-    // const firstTx = await db.get('SELECT * FROM txs WHERE id = ?', [1])
-    // const allTxs = await db.all('SELECT * FROM txs')
+    app.get('/api/txs', async (req, res) => {
+      const txs = await db.all('SELECT * FROM txs')
+      res.json({ txs })
+    })
 
-    app.get('/api/txs', (req, res) => {
-      res.json({ msg: 'hi lol' })
+    app.get('/api/txs/:id', async (req, res) => {
+      const {id} = req.params
+      const tx = await db.get('SELECT * FROM txs WHERE id = ?', [id])
+      res.json({ tx })
     })
 
     // start express server

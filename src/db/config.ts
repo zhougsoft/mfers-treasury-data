@@ -5,7 +5,7 @@ import { open } from 'sqlite'
 
 export const connectDb = async () => {
   // make sure db file exists before trying to connect
-  const dbPath = path.join(__dirname, 'db', 'database.db')
+  const dbPath = path.join(__dirname, 'database.db')
   if (!fs.existsSync(dbPath))
     throw Error(
       'src/db/database.db file not found - run `npm migrate-up` to create the db file!'
