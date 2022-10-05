@@ -3,8 +3,9 @@ import * as path from 'path'
 import * as fs from 'fs'
 import * as dotenv from 'dotenv'
 import { createClient } from '@urql/core'
-import { ethers, BigNumber } from 'ethers'
+import { ethers } from 'ethers'
 import * as abi from '../data/abi.json'
+import { promiseAllInBatches } from '../utils'
 
 dotenv.config()
 
@@ -14,7 +15,8 @@ const TREASURY_CREATION_BLOCK = 14111591
 const BLOCK_SUBGRAPH_ENDPOINT =
   'https://api.thegraph.com/subgraphs/name/blocklytics/ethereum-blocks'
 
-interface Event {
+// reflects a generic ethers.js event
+interface IncomeEvent {
   blockNumber: number
   blockHash: string
   transactionIndex: number
@@ -26,7 +28,15 @@ interface Event {
   logIndex: number
   event: string // event identifier; ex: 'SafeReceived'
   eventSignature: string
-  args: string[] | BigNumber[]
+  args: string[]
+}
+
+// matches the schema for `txs` table
+interface IncomeTx {
+  amount: number
+  from: string
+  timestamp: number
+  blockNumber: number
 }
 
 // sets up library clients
@@ -88,7 +98,7 @@ const cacheIncomeEvents = async (
 }
 
 // returns object parsed from cache JSON file
-const readIncomeEventCache = async (): Promise<Event[]> => {
+const readIncomeEventCache = async (): Promise<IncomeEvent[]> => {
   try {
     const cachePath = path.join(__dirname, '../../cache', 'events.json')
     const fileData = fs.readFileSync(cachePath, { encoding: 'utf-8' })
@@ -105,8 +115,12 @@ const fetchBlockTimestamp = async (
 ): Promise<number> => {
   try {
     const query = `{ blocks(where: { number: ${blockNumber} }) { timestamp } }`
-    const result = await gqlClient.query(query).toPromise().catch(console.error)
-    return parseInt(result?.data?.blocks[0]?.timestamp)
+    const result = await gqlClient.query(query).toPromise()
+
+    if (result.error) throw new Error(result.error)
+
+    const timestamp = parseInt(result?.data?.blocks[0]?.timestamp)
+    return timestamp
   } catch (error) {
     console.error(error)
   }
@@ -141,31 +155,49 @@ const main = async () => {
   }
 
   // read events from the event cache
-  const incomeEvents: Event[] = await readIncomeEventCache()
+  const incomeEvents: IncomeEvent[] = await readIncomeEventCache()
 
   // fetch timestamp for each event by block number via subgraph
   // this gives an array of promises to resolve the final data
-  const incomeTxPromises = incomeEvents.map(async ev => {
-    const timestamp = await fetchBlockTimestamp(ev.blockNumber, gqlClient)
+  const incomeTxPromises: Promise<IncomeTx>[] = incomeEvents.map(
+    incomeEvent => {
+      return new Promise<IncomeTx>((resolve, reject) => {
+        fetchBlockTimestamp(incomeEvent.blockNumber, gqlClient)
+          .then(timestamp => {
+            const incomeTx: IncomeTx = {
+              amount: parseFloat(ethers.utils.formatEther(incomeEvent.args[1])),
+              from: incomeEvent?.args[0],
+              timestamp,
+              blockNumber: incomeEvent.blockNumber,
+            }
 
-    const incomeTx = {
-      amount: parseFloat(ethers.utils.formatEther(ev.args[1])),
-      from: ev?.args[0],
-      timestamp,
-      blockNumber: ev.blockNumber,
+            resolve(incomeTx)
+          })
+          .catch(error => {
+            reject(error)
+          })
+      })
     }
+  )
 
-    return incomeTx
-  })
+  // TODO: getting rate limited
+  // chunk promises up into smaller batches to avoid
+  console.log('fetching timestamps...')
 
-  // wait for graph queries to resolve then write resulting data to disk as JSON
-  console.log(`\nfetching timestamps for ${incomeTxPromises.length} events...`)
+  let results = await Promise.all(incomeTxPromises).catch(
+    error => {
+      console.error(error)
+      process.exit(1)
+    }
+  )
 
-  // TODO: write promise batcher algo here for `incomeTxPromises` as requests will fail on batches > 500
-  const incomeTxs = await Promise.all(incomeTxPromises)
+  console.log(`fetched ${results.length}...`)
 
-  await writeOutputJSON(incomeTxs, 'output')
-  console.log(`done! wrote ${incomeTxs.length} txs to output\n`)
+  // write the formatted results to disk in cache
+  console.log(`fetching complete! writing to disk...`)
+  await writeOutputJSON(results, 'output')
+  console.log(`done! wrote ${results.length} txs to output\n`)
+  process.exit(1)
 } // end main
 
 main()

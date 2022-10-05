@@ -7,7 +7,7 @@
 import * as path from 'path'
 import * as sqlite3 from 'sqlite3'
 import { open } from 'sqlite'
-import * as incomeEvents from '../../output/output.json'
+import * as incomeEvents from '../db/seed-data.json'
 
 const main = async () => {
   try {
