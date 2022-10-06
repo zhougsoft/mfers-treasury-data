@@ -20,9 +20,18 @@ const main = async () => {
     })
 
     app.get('/api/txs/:id', async (req, res) => {
-      const {id} = req.params
+      const { id } = req.params
       const tx = await db.get('SELECT * FROM txs WHERE id = ?', [id])
       res.json({ tx })
+    })
+
+    // TODO: use the query in the route as an example
+    // set up a route with  `from` and `to` params to filter on dates
+    app.get('/api/dates', async (req, res) => {
+      const txs = await db.all(
+        "SELECT datetime(timestamp, 'unixepoch') as date FROM txs"
+      )
+      res.json({ txs })
     })
 
     // start express server
