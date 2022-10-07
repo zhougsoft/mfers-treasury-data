@@ -4,37 +4,9 @@
     <meta charset="UTF-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>mfers treasury data</title>
+    <title>unofficial mfers treasury data</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
-    <script type="module" defer>
-      const main = async () => {
-        //-------------------------------------------------------------------------------
-
-        // fetch the local JSON data
-        const incomeTxs = await fetch('/data.json').then(res => res.json())
-
-        // TODO: chart `incomeTxs` data with chart.js
-        // https://www.chartjs.org/docs/latest
-        const canvas = document.querySelector('#chart')
-        const chartOpts = {
-          type: 'bar',
-          data: {
-            labels: ['Red', 'Blue', 'Yellow', 'Green', 'Purple', 'Orange'],
-            datasets: [
-              {
-                label: 'total monthly ETH income',
-                data: [12, 19, 3, 5, 2, 3],
-                backgroundColor: 'coral',
-              },
-            ],
-          },
-        }
-
-        const chart = new Chart(canvas, chartOpts)
-        //-------------------------------------------------------------------------------
-      }
-      window.addEventListener('load', main)
-    </script>
+    <script src="main.js" defer></script>
   </head>
   <body>
     <canvas id="chart"></canvas>
