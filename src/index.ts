@@ -14,24 +14,57 @@ const main = async () => {
     const publicPath = path.join(__dirname, '../public')
     app.use(express.static(publicPath, { extensions: ['html'] }))
 
+    // get all txs, optionally by date
     app.get('/api/txs', async (req, res) => {
+      // if date query params passed, filter results by date
+      if (req.query) {
+        const { from, to } = req.query
+
+        // TODO: validate the date input from sender
+
+        // api/txs?from=YYYY-MM-DD&to=YYYY-MM-DD
+        if (from && to) {
+          const q_AllTxsFromTo =
+            "SELECT * from txs WHERE datetime(timestamp, 'unixepoch') BETWEEN ? and ?"
+          const txs = await db.all(q_AllTxsFromTo, [from, to])
+          console.log(`fetched ${txs.length} txs`)
+          res.json({ result_count: txs.length, txs })
+          return
+        }
+
+        // api/txs?from=YYYY-MM-DD
+        if (from) {
+          const q_AllTxsFrom =
+            "SELECT * from txs WHERE datetime(timestamp, 'unixepoch') > ?"
+          const txs = await db.all(q_AllTxsFrom, [from])
+          console.log(`fetched ${txs.length} txs`)
+          res.json({ result_count: txs.length, txs })
+          return
+        }
+
+        // api/txs?&to=YYYY-MM-DD
+        if (to) {
+          const q_AllTxsFrom =
+            "SELECT * from txs WHERE datetime(timestamp, 'unixepoch') < ?"
+          const txs = await db.all(q_AllTxsFrom, [to])
+          console.log(`fetched ${txs.length} txs`)
+          res.json({ result_count: txs.length, txs })
+          return
+        }
+      }
+
+      // no parameters, return all tx records
       const txs = await db.all('SELECT * FROM txs')
-      res.json({ txs })
+      console.log(`fetched all ${txs.length} txs`)
+      res.json({ result_count: txs.length, txs })
     })
 
+    // get tx by id
     app.get('/api/txs/:id', async (req, res) => {
       const { id } = req.params
       const tx = await db.get('SELECT * FROM txs WHERE id = ?', [id])
+      console.log(`fetched tx id #${id}`)
       res.json({ tx })
-    })
-
-    // TODO: use the query in the route as an example
-    // set up a route with  `from` and `to` params to filter on dates
-    app.get('/api/dates', async (req, res) => {
-      const txs = await db.all(
-        "SELECT datetime(timestamp, 'unixepoch') as date FROM txs"
-      )
-      res.json({ txs })
     })
 
     // start express server
