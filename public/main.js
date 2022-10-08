@@ -38,7 +38,7 @@ const main = async () => {
   }
 
   // parse fetched data
-  let txs = reqResult.txs
+  const txs = reqResult.txs
     .filter(tx => tx.amount > 0)
     .map(tx => {
       // add digits to the block timestamp to make parse-able by JS
@@ -49,24 +49,26 @@ const main = async () => {
       }
     })
 
-  txs = [
-    ...txs,
-    { x: 1701288070000, y: 0.02 },
-    { x: 1676577670000, y: 12.22 },
-    { x: 1609531270000, y: 5.21 },
-    { x: 1616526070000, y: 0.23 },
-    { x: 1631386870000, y: 2.11 },
-  ]
+  const txsByYear = _groupTxsByYear(txs)
 
-  console.log(_groupTxsByYear(txs))
-  return
+  const groupedTxs = {}
+  for (var prop in txsByYear) {
+    if (Object.prototype.hasOwnProperty.call(txsByYear, prop)) {
+      const txsOfYear = txsByYear[prop]
+      groupedTxs[prop] = _groupTxsByMonth(txsOfYear)
+    }
+  }
+
+  // TODO: loop thru monthly txs and calc monthly income
+  const txs2022 = groupedTxs[2022]
+  console.log(txs2022)
 
   // setup chart dataset
   const chartData = {
     datasets: [
       {
         label: 'unofficial mfers ETH income',
-        data: filteredTxs,
+        data: chartTxs,
         backgroundColor: ['#ffb470'],
         borderColor: ['#222'],
         borderWidth: 2,
@@ -98,7 +100,7 @@ const main = async () => {
   new Chart(document.querySelector('#chart').getContext('2d'), chartConfig)
   document.querySelector(
     '#info'
-  ).innerHTML = `${filteredTxs.length} results for time range: ${RANGE_START} to ${RANGE_END}`
+  ).innerHTML = `${chartTxs.length} results for time range: ${RANGE_START} to ${RANGE_END}`
 } // end main()
 
 window.addEventListener('load', main)
