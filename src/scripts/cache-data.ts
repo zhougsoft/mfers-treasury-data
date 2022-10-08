@@ -184,12 +184,10 @@ const main = async () => {
   // chunk promises up into smaller batches to avoid
   console.log('fetching timestamps...')
 
-  let results = await Promise.all(incomeTxPromises).catch(
-    error => {
-      console.error(error)
-      process.exit(1)
-    }
-  )
+  let results = await Promise.all(incomeTxPromises).catch(error => {
+    console.error(error)
+    process.exit(1)
+  })
 
   console.log(`fetched ${results.length}...`)
 

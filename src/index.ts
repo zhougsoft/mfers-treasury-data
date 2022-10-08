@@ -27,8 +27,8 @@ const main = async () => {
           const q_AllTxsFromTo =
             "SELECT * from txs WHERE datetime(timestamp, 'unixepoch') BETWEEN ? and ?"
           const txs = await db.all(q_AllTxsFromTo, [from, to])
-          console.log(`fetched ${txs.length} txs`)
-          res.json({ result_count: txs.length, txs })
+          console.log(`queried ${txs.length} txs`)
+          res.json({ txs })
           return
         }
 
@@ -37,8 +37,8 @@ const main = async () => {
           const q_AllTxsFrom =
             "SELECT * from txs WHERE datetime(timestamp, 'unixepoch') > ?"
           const txs = await db.all(q_AllTxsFrom, [from])
-          console.log(`fetched ${txs.length} txs`)
-          res.json({ result_count: txs.length, txs })
+          console.log(`queried ${txs.length} txs`)
+          res.json({ txs })
           return
         }
 
@@ -47,23 +47,23 @@ const main = async () => {
           const q_AllTxsFrom =
             "SELECT * from txs WHERE datetime(timestamp, 'unixepoch') < ?"
           const txs = await db.all(q_AllTxsFrom, [to])
-          console.log(`fetched ${txs.length} txs`)
-          res.json({ result_count: txs.length, txs })
+          console.log(`queried ${txs.length} txs`)
+          res.json({ txs })
           return
         }
       }
 
       // no parameters, return all tx records
       const txs = await db.all('SELECT * FROM txs')
-      console.log(`fetched all ${txs.length} txs`)
-      res.json({ result_count: txs.length, txs })
+      console.log(`queried all ${txs.length} txs`)
+      res.json({ txs })
     })
 
     // get tx by id
     app.get('/api/txs/:id', async (req, res) => {
       const { id } = req.params
       const tx = await db.get('SELECT * FROM txs WHERE id = ?', [id])
-      console.log(`fetched tx id #${id}`)
+      console.log(`queried tx id #${id}`)
       res.json({ tx })
     })
 
