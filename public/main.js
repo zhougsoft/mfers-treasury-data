@@ -4,6 +4,22 @@
 const RANGE_START = '2022-10-01'
 const RANGE_END = '2022-10-05'
 
+const _groupTxsByYear = txs =>
+  txs.reduce((group, tx) => {
+    const year = new Date(tx.x).getFullYear()
+    group[year] = group[year] ?? []
+    group[year].push(tx)
+    return group
+  }, {})
+
+const _groupTxsByMonth = txs =>
+  txs.reduce((group, tx) => {
+    const month = new Date(tx.x).getMonth() + 1
+    group[month] = group[month] ?? []
+    group[month].push(tx)
+    return group
+  }, {})
+
 const main = async () => {
   // fetch tx data from server
   const reqResult = await fetch('/api/txs')
@@ -22,7 +38,7 @@ const main = async () => {
   }
 
   // parse fetched data
-  const txData = reqResult.txs
+  let txs = reqResult.txs
     .filter(tx => tx.amount > 0)
     .map(tx => {
       // add digits to the block timestamp to make parse-able by JS
@@ -32,17 +48,25 @@ const main = async () => {
         y: tx.amount,
       }
     })
-    .filter(tx => {
-      const isInRange = tx.x > rangeStartTime && tx.x < rangeEndTime
-      return isInRange
-    })
+
+  txs = [
+    ...txs,
+    { x: 1701288070000, y: 0.02 },
+    { x: 1676577670000, y: 12.22 },
+    { x: 1609531270000, y: 5.21 },
+    { x: 1616526070000, y: 0.23 },
+    { x: 1631386870000, y: 2.11 },
+  ]
+
+  console.log(_groupTxsByYear(txs))
+  return
 
   // setup chart dataset
   const chartData = {
     datasets: [
       {
         label: 'unofficial mfers ETH income',
-        data: txData,
+        data: filteredTxs,
         backgroundColor: ['#ffb470'],
         borderColor: ['#222'],
         borderWidth: 2,
@@ -74,7 +98,7 @@ const main = async () => {
   new Chart(document.querySelector('#chart').getContext('2d'), chartConfig)
   document.querySelector(
     '#info'
-  ).innerHTML = `${txData.length} results for time range: ${RANGE_START} to ${RANGE_END}`
+  ).innerHTML = `${filteredTxs.length} results for time range: ${RANGE_START} to ${RANGE_END}`
 } // end main()
 
 window.addEventListener('load', main)
