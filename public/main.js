@@ -1,6 +1,7 @@
 // using chart.js to visualize data fetched from server
 // https://www.chartjs.org/docs/latest
 
+const CHART_LABEL = 'unofficial mfers treasury monthly ETH income'
 const CHART_YEAR = 2022
 const MONTH_KEY = [
   'jan',
@@ -17,6 +18,7 @@ const MONTH_KEY = [
   'dec',
 ]
 
+// groups flat list of txs by year as properties in object
 const groupTxsByYear = txs =>
   txs.reduce((group, tx) => {
     const year = new Date(tx.x).getFullYear()
@@ -25,6 +27,7 @@ const groupTxsByYear = txs =>
     return group
   }, {})
 
+// groups flat list of txs by month as properties in object
 const groupTxsByMonth = txs =>
   txs.reduce((group, tx) => {
     const month = new Date(tx.x).getMonth() + 1
@@ -33,6 +36,7 @@ const groupTxsByMonth = txs =>
     return group
   }, {})
 
+// --- entry point ---
 const main = async () => {
   // fetch tx data from server
   const reqResult = await fetch('/api/txs')
@@ -90,7 +94,7 @@ const main = async () => {
     labels: monthlyTotals.map(total => total.x),
     datasets: [
       {
-        label: 'unofficial mfers treasury monthly ETH income',
+        label: CHART_LABEL,
         data: monthlyTotals,
         backgroundColor: ['#ffb470'],
         borderColor: ['#222'],

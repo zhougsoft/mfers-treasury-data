@@ -5,7 +5,6 @@ import * as dotenv from 'dotenv'
 import { createClient } from '@urql/core'
 import { ethers } from 'ethers'
 import * as abi from '../data/abi.json'
-import { promiseAllInBatches } from '../utils'
 
 dotenv.config()
 
