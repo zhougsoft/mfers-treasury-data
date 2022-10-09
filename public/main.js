@@ -1,10 +1,23 @@
 // using chart.js to visualize data fetched from server
 // https://www.chartjs.org/docs/latest
 
-const RANGE_START = '2022-10-01'
-const RANGE_END = '2022-10-05'
+const CHART_YEAR = 2022
+const MONTH_KEY = [
+  'jan',
+  'feb',
+  'mar',
+  'apr',
+  'may',
+  'jun',
+  'jul',
+  'aug',
+  'sep',
+  'oct',
+  'nov',
+  'dec',
+]
 
-const _groupTxsByYear = txs =>
+const groupTxsByYear = txs =>
   txs.reduce((group, tx) => {
     const year = new Date(tx.x).getFullYear()
     group[year] = group[year] ?? []
@@ -12,7 +25,7 @@ const _groupTxsByYear = txs =>
     return group
   }, {})
 
-const _groupTxsByMonth = txs =>
+const groupTxsByMonth = txs =>
   txs.reduce((group, tx) => {
     const month = new Date(tx.x).getMonth() + 1
     group[month] = group[month] ?? []
@@ -29,14 +42,6 @@ const main = async () => {
       document.querySelector('main').innerHTML = '<h1>error fetching data</h1>'
     })
 
-  // parse & validate date range input
-  const rangeStartTime = new Date(RANGE_START + 'T00:00:00').getTime()
-  const rangeEndTime = new Date(RANGE_END + 'T00:00:00').getTime()
-
-  if (rangeStartTime > rangeEndTime) {
-    throw Error('starting date range must be less than end date range')
-  }
-
   // parse fetched data
   const txs = reqResult.txs
     .filter(tx => tx.amount > 0)
@@ -49,26 +54,44 @@ const main = async () => {
       }
     })
 
-  const txsByYear = _groupTxsByYear(txs)
-
+  // parse the flat timestamp list into date heirarchy object:
+  // { year: { month: { x, y } }}
   const groupedTxs = {}
-  for (var prop in txsByYear) {
+  const txsByYear = groupTxsByYear(txs)
+  for (const prop in txsByYear) {
     if (Object.prototype.hasOwnProperty.call(txsByYear, prop)) {
       const txsOfYear = txsByYear[prop]
-      groupedTxs[prop] = _groupTxsByMonth(txsOfYear)
+      groupedTxs[prop] = groupTxsByMonth(txsOfYear)
     }
   }
 
-  // TODO: loop thru monthly txs and calc monthly income
-  const txs2022 = groupedTxs[2022]
-  console.log(txs2022)
+  // calculate total income of each month of given `CHART_YEAR`
+  const monthlyTotals = []
+  const txsByMonth = groupedTxs[CHART_YEAR]
+  for (const prop in txsByMonth) {
+    if (Object.prototype.hasOwnProperty.call(txsByMonth, prop)) {
+      const txsOfMonth = txsByMonth[prop]
+      const monthlyTotal = txsOfMonth.reduce(
+        (prev, curr) => {
+          // x = label, y = accumulative ETH total
+          return {
+            x: `${MONTH_KEY[prop - 1]} '${CHART_YEAR.toString().substring(2)}`,
+            y: prev.y + curr.y,
+          }
+        },
+        { y: 0 }
+      )
+      monthlyTotals.push(monthlyTotal)
+    }
+  }
 
   // setup chart dataset
   const chartData = {
+    labels: monthlyTotals.map(total => total.x),
     datasets: [
       {
-        label: 'unofficial mfers ETH income',
-        data: chartTxs,
+        label: 'unofficial mfers treasury monthly ETH income',
+        data: monthlyTotals,
         backgroundColor: ['#ffb470'],
         borderColor: ['#222'],
         borderWidth: 2,
@@ -82,13 +105,14 @@ const main = async () => {
     data: chartData,
     options: {
       scales: {
-        x: {
-          parsing: false,
-          type: 'time',
-          time: {
-            unit: 'hour',
-          },
-        },
+        // // use below x scale with date-fns adapter
+        // x: {
+        //   parsing: false,
+        //   type: 'time',
+        //   time: {
+        //     unit: 'month',
+        //   },
+        // },
         y: {
           beginAtZero: true,
         },
@@ -98,9 +122,6 @@ const main = async () => {
 
   // generate chart & render output
   new Chart(document.querySelector('#chart').getContext('2d'), chartConfig)
-  document.querySelector(
-    '#info'
-  ).innerHTML = `${chartTxs.length} results for time range: ${RANGE_START} to ${RANGE_END}`
 } // end main()
 
 window.addEventListener('load', main)
