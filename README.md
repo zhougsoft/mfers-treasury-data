@@ -1,4 +1,4 @@
-# mfers treasury data
+# 🎧🏦 mfers treasury data
 
 > scripts to ping the mfers treasury contract and parse it's related data, along with an API and client to view it
 
